@@ -1,0 +1,17 @@
+---
+title: "Iowa Falls Symposium 2025"
+subtitle: "Trauma and EMS Data Science Applications"
+author: "Dr. Nicolas Foss"
+date: "2025-11-12" # adjust to actual date
+format: 
+  letterbox-revealjs:
+    theme: simple
+    slide-number: true
+    transition: slide
+---
+
+# Let's test this presentation
+This is a test fake list
+:: {.incremental}
+
+::
