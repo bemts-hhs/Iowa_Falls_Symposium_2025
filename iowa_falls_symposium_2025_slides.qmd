@@ -17,16 +17,61 @@ format:
     notes: true
     title-slide-attributes:
       class: title-slide
-      data-background-color: "#03617A" # your primary blue
+      data-background-color: white # your primary blue
       data-background-size: cover
       data-background-position: center
 execute: 
   echo: true
   warning: false
   message: false
+  eval: false
 ---
 
-<!-- ```{r setup, echo=FALSE}
+```{r plot_text_setup, echo=FALSE}
+###_____________________________________________________________________________
+# showtext setup ----
+###_____________________________________________________________________________
+
+# run showtext auto, use throughout project
+showtext::showtext_auto()
+
+# get 300 dpi with showtext
+showtext::showtext_opts(dpi = 300)
+
+# get work sans fonts of interest
+all_fonts <- systemfonts::system_fonts()
+
+# regular
+work_sans <- all_fonts |>
+  dplyr::filter(name == "WorkSans-Regular") |>
+  dplyr::pull(path)
+
+# semibold
+work_sans_semibold <- all_fonts |>
+  dplyr::filter(name == "WorkSans-SemiBold") |>
+  dplyr::pull(path)
+
+# extrabold
+work_sans_extrabold <- all_fonts |>
+  dplyr::filter(name == "WorkSans-ExtraBold") |>
+  dplyr::pull(path)
+
+# use sysfonts to load the fonts
+sysfonts::font_add(
+  family = "Work Sans",
+  regular = work_sans,
+  bold = work_sans_extrabold
+)
+```
+
+```{r setup, echo=FALSE}
+
+# Get path to figures folder
+figures <- Sys.getenv("figures_folder")
+
+# Path to needed functions
+setup <- Sys.getenv("setup_file")
+
 # clinical data
 
 # trauma environment variables ----
@@ -42,6 +87,8 @@ injury_matrix_path <- Sys.getenv("injury_matrix")
 iowa_counties_districts_path <- Sys.getenv("iowa_counties_districts")
 hospital_data_path <- Sys.getenv("hospital_data_folder")
 
+# Get needed custom functions into memory
+source(setup)
 
 ###_____________________________________________________________________________
 # Load the files used to categorize mechanism and nature of injury ----
@@ -248,12 +295,11 @@ trauma_data_clean <- trauma_data |>
 
 # get the trauma data for the year of interest
 trauma_2024 <- trauma_data_clean |> dplyr::filter(Year == 2024)
-``` -->
+``` 
+
 
 # Objectives
-Today, we will learn
-
-::: {.incremental}
+Today, we will learn:
 
 - overall statistics on falls
 - survival among patients who fell
@@ -261,14 +307,84 @@ Today, we will learn
   - demographic groups
   - geographic areas
 
-:::
-
 # About the data
 Source: Iowa Trauma Registry from 2020-2024.
 
 ::: {.incremental}
-- Not all injured patients are entered in the trauma registry. Go to the Bureau of Emergency Medical and Trauma Services website and look for the Trauma Data Registry page to find the inclusion criteria.
-- Generally, the patients in the trauma registry are of higher acuity.
-- The Iowa Trauma Registry is not the only source of data related to injured patients in Iowa. The Iowa Hospital Association's Inpatient Outpatient dataset is able to document all injuries including minor injuries that are typically not included in a state government's modern trauma registry.
+
+- Check out [Trauma Data Registry](https://hhs.iowa.gov/health-prevention/providers-professionals/emergency-medical-services-trauma/trauma-system-resources/trauma-data-registry) for inclusion criteria.
+- The trauma registry...
+  - ...houses data on the most severe injuries.
+  - ...does not register all injuries in Iowa.
+    - Iowa Hospital Association's Inpatient Outpatient dataset = comprehensive
+
 :::
 
+```{r initial_counts, echo=FALSE}
+
+# Get counts
+falls_counts <- trauma_data_clean |>
+  dplyr::mutate(
+    falls = dplyr::if_else(
+      !grepl(pattern = "fall", x = CAUSE_OF_INJURY_AR_1, ignore.case = TRUE),
+      "Other Injury",
+      CAUSE_OF_INJURY_AR_1,
+      missing = "Missing"
+    )
+  ) |>
+  injury_incident_count(Year, falls) |>
+  tidyr::pivot_wider(id_cols = Year, names_from = falls, values_from = n) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    prop_all_falls = Fall / rowSums(dplyr::across(Fall:`Other Injury`)),
+    prop_same_level = `Fall - Same Level` /
+      rowSums(dplyr::across(Fall:`Other Injury`)),
+    prop_other = `Other Injury` / rowSums(dplyr::across(Fall:`Other Injury`)),
+    prop_falls = (Fall + `Fall - Same Level`) /
+      rowSums(dplyr::across(Fall:`Other Injury`))
+  ) |>
+  dplyr::relocate(prop_all_falls, .after = Fall) |>
+  dplyr::relocate(prop_same_level, .after = `Fall - Same Level`) |>
+  dplyr::relocate(prop_other, .after = `Other Injury`)
+
+# gt table to show counts
+falls_counts_gt <- falls_counts |>
+  gt::gt() |>
+  gt::fmt_number(
+    columns = c(Fall, `Fall - Same Level`, `Other Injury`),
+    drop_trailing_zeros = TRUE
+  ) |>
+  gt::fmt_percent(
+    columns = tidyselect::matches("prop"),
+    drop_trailing_zeros = TRUE
+  ) |>
+  gt::cols_label(
+    tidyselect::matches("same") ~ "Same Level",
+    "prop_all_falls" ~ "% Falls",
+    "prop_same_level" ~ "% Same Level",
+    "prop_other" ~ "% Other Injury",
+    prop_falls ~ "% Any Falls"
+  ) |>
+  gt::cols_merge(columns = Fall:prop_all_falls, pattern = "{1} ({2})") |>
+  gt::cols_merge(
+    columns = `Fall - Same Level`:prop_same_level,
+    pattern = "{1} ({2})"
+  ) |>
+  gt::cols_merge(columns = `Other Injury`:prop_other, pattern = "{1} ({2})") |>
+  tab_style_hhs(border_cols = Fall:prop_all_falls)
+
+# save the gt table
+gt::gtsave(
+  data = falls_counts_gt,
+  filename = "falls_count_gt.png",
+  vwidth = 800,
+  vheight = 800 / 1.333333,
+  path = figures
+)
+
+```
+
+# Falls at a glance
+Year over year, since 2020, falls make up > 55% of all injury events in Iowa. Same-level falls grow rapidly.
+
+![](figures/falls_count_gt.png){fig-alt="A statistical table showing counts of fall events in Iowa since 2020." fig-cap=""}

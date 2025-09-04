@@ -44,6 +44,41 @@ $accent-mint:   #B9E1DA;
     text-align: center;
    }
 
+/* Center the logo at the bottom */
+.reveal .slide-logo {
+  height: 50px !important;
+  width: 200px !important;
+  max-width: unset !important;
+  max-height: unset !important;
+  height: auto;
+  position: absolute;
+  left: 75%;           /* move horizontal midpoint */
+  bottom: 20px;        /* offset from bottom */
+}
+
+/* Title slide: font + color overrides */
+.reveal section.title-slide h1.title {
+  color: $primary-blue !important;            /* title color */
+  font-family: "Work Sans", sans-serif; /* title font */
+  font-weight: 900;                     /* Black */
+}
+
+.reveal section.title-slide p.subtitle {
+  color: $secondary-gray !important;            /* subtitle color (use a brand color if preferred) */
+  font-family: "Work Sans", sans-serif; /* subtitle font */
+  font-weight: 800;                     /* ExtraBold */
+}
+
+/* (Optional) author/date on title slide */
+.reveal section.title-slide p.author,
+.reveal section.title-slide p.date {
+  color: $secondary-teal !important;
+  font-family: "Work Sans", sans-serif;
+  font-weight: 400;
+}
+
+
+
 /* ============================
    Heading Hierarchy
    ============================ */
