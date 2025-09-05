@@ -1,6 +1,6 @@
 # Iowa Falls Symposium 2025 Presentation  
 
-[![Quarto](https://img.shields.io/badge/Quarto-%E2%89%A51.7.0-5A5E9A?logo=quarto&logoColor=white)](https://quarto.org/)  
+[![Quarto](https://img.shields.io/badge/Quarto-%E2%89%A51.7.32-5A5E9A?logo=quarto&logoColor=white)](https://quarto.org/)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)  
 [![Reveal.js](https://img.shields.io/badge/Reveal.js-5.0-ff69b4?logo=javascript&logoColor=white)](https://revealjs.com/)  
 [![R](https://img.shields.io/badge/R-4.5.1-blue?logo=R&logoColor=white)](https://www.r-project.org/)  

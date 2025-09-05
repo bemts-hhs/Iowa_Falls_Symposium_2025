@@ -1,5 +1,5 @@
 ---
-title: "On Not Falling Short"
+title: "Not Falling Short"
 subtitle: "Injury Epidemiology of Falls in Iowa"
 author: "Nicolas Foss, Ed.D., MS"
 date: "2025-09-26" # adjust to actual date
@@ -15,62 +15,33 @@ format:
     toc: false
     code-overflow: wrap
     notes: true
+    progress: false
     title-slide-attributes:
       class: title-slide
       data-background-color: white # your primary blue
       data-background-size: cover
       data-background-position: center
 execute: 
-  echo: true
+  echo: false
   warning: false
   message: false
-  eval: false
+  eval: true
+  include: false
 ---
 
-```{r plot_text_setup, echo=FALSE}
-###_____________________________________________________________________________
-# showtext setup ----
-###_____________________________________________________________________________
-
-# run showtext auto, use throughout project
-showtext::showtext_auto()
-
-# get 300 dpi with showtext
-showtext::showtext_opts(dpi = 300)
-
-# get work sans fonts of interest
-all_fonts <- systemfonts::system_fonts()
-
-# regular
-work_sans <- all_fonts |>
-  dplyr::filter(name == "WorkSans-Regular") |>
-  dplyr::pull(path)
-
-# semibold
-work_sans_semibold <- all_fonts |>
-  dplyr::filter(name == "WorkSans-SemiBold") |>
-  dplyr::pull(path)
-
-# extrabold
-work_sans_extrabold <- all_fonts |>
-  dplyr::filter(name == "WorkSans-ExtraBold") |>
-  dplyr::pull(path)
-
-# use sysfonts to load the fonts
-sysfonts::font_add(
-  family = "Work Sans",
-  regular = work_sans,
-  bold = work_sans_extrabold
-)
-```
-
-```{r setup, echo=FALSE}
+```{r setup}
 
 # Get path to figures folder
 figures <- Sys.getenv("figures_folder")
 
 # Path to needed functions
 setup <- Sys.getenv("setup_file")
+
+# population files environment variables ----
+iowa_county_pops_path <- Sys.getenv("IOWA_COUNTY_POPS")
+iowa_county_age_pops_path <- Sys.getenv("IOWA_COUNTY_AGE_POPS")
+us_standard_pops_path <- Sys.getenv("US_STANDARD_POPS")
+iowa_state_age_pops_path <- Sys.getenv("IOWA_STATE_POPS")
 
 # clinical data
 
@@ -89,7 +60,9 @@ hospital_data_path <- Sys.getenv("hospital_data_folder")
 
 # Get needed custom functions into memory
 source(setup)
+```
 
+```{r load_data}
 ###_____________________________________________________________________________
 # Load the files used to categorize mechanism and nature of injury ----
 # based on the ICD-10 injury code
@@ -138,6 +111,7 @@ location_data <- location_data |>
 hospital_data <- readxl::read_excel(path = hospital_data_path) |>
   janitor::clean_names(case = "screaming_snake")
 
+
 ### trauma data ----
 trauma_data_2020 <- readr::read_csv(file = trauma_data_path_2020)
 trauma_data_2021 <- readr::read_csv(file = trauma_data_path_2021)
@@ -173,7 +147,9 @@ trauma_data <- dplyr::bind_rows(
       ~ as.character(.)
     ))
 )
+```
 
+```{r add_data_features}
 # deal with missing values in cause of injury categories
 trauma_data_clean <- trauma_data |>
   dplyr::mutate(
@@ -291,21 +267,664 @@ trauma_data_clean <- trauma_data |>
   dplyr::relocate(
     tidyselect::all_of(c("Designation", "Urbanicity")),
     .after = County
+  ) |>
+  dplyr::mutate(
+    falls = grepl(
+      pattern = "fall",
+      x = CAUSE_OF_INJURY_AR_1,
+      ignore.case = TRUE
+    )
   )
 
 # get the trauma data for the year of interest
 trauma_2024 <- trauma_data_clean |> dplyr::filter(Year == 2024)
+
+```
+
+```{r population_data}
+###_____________________________________________________________________________
+# census bureau standard pops 2020-2024 census ----
+# documentation here:
+# https://www2.census.gov/programs-surveys/popest/technical-documentation/file-layouts/
+###_____________________________________________________________________________
+
+# 2020-2024 Census Bureau County population data ----
+# get years for each county population
+county_pops_all <- readr::read_csv(
+  file = iowa_county_pops_path
+)
+
+# get columns of interest for the county-level population data ----
+county_pops_select <- county_pops_all |>
+  dplyr::filter(STATE == "19", COUNTY != "000") |>
+  dplyr::select(County = CTYNAME, tidyselect::matches("popestimate\\d{4}$")) |>
+  tidyr::pivot_longer(
+    cols = -County,
+    names_to = "Year",
+    values_to = "County_Population"
+  ) |>
+  dplyr::mutate(
+    Year = stringr::str_remove(string = Year, pattern = "POPESTIMATE"),
+    Year = forcats::as_factor(as.numeric(Year)),
+    County = stringr::str_squish(stringr::str_remove_all(
+      County,
+      pattern = "\\sCounty"
+    )),
+    County = stringr::str_to_title(County),
+    County = dplyr::if_else(
+      grepl(pattern = "o[']brien", x = County, ignore.case = TRUE),
+      "O'Brien",
+      County
+    )
+  )
+
+# Iowa county pops by age group ----
+
+# ingest data
+age_group_pops <- readr::read_csv(iowa_county_age_pops_path)
+
+# 2020-2024 data Iowa county population data by age group
+age_group_pops_final <- age_group_pops |>
+  dplyr::select(
+    CTYNAME,
+    YEAR,
+    tidyselect::matches(
+      "age(04|59|1014|1519|2024|2529|3034|3539|4044|4549|5054|5559|6064|6569|7074|7579|8084|85plus)_tot",
+      ignore.case = TRUE
+    ),
+    POPESTIMATE
+  ) |>
+
+  # Year #1 here is the base year at 4/1/2020
+  dplyr::filter(YEAR != 1) |> # 7/1/2020 - 7/1/2024 pop estimates
+
+  # Add 2018 to each year so that 2 == 2020, 3 == 2021, 4 == 2022, 5 == 2023,
+  # and 6 == 2024, which is the intended meaning
+  dplyr::mutate(YEAR = 2018 + YEAR) |>
+  dplyr::rename(Year = YEAR) |>
+  tidyr::pivot_longer(
+    cols = AGE04_TOT:AGE85PLUS_TOT,
+    names_to = "Age_Group",
+    values_to = "County_Age_Population"
+  ) |>
+  dplyr::mutate(
+    Age_Group = stringr::str_extract(Age_Group, pattern = "\\d+"),
+    Age_Group = dplyr::if_else(
+      Age_Group == "85",
+      "85+",
+      dplyr::if_else(
+        nchar(Age_Group) == 2,
+        paste0(
+          stringr::str_sub(Age_Group, 1, 1),
+          "-",
+          stringr::str_sub(Age_Group, 2, 2)
+        ),
+        dplyr::if_else(
+          nchar(Age_Group) == 4,
+          paste0(
+            stringr::str_sub(Age_Group, 1, 2),
+            "-",
+            stringr::str_sub(Age_Group, 3, 4)
+          ),
+          "Missing"
+        )
+      )
+    ),
+    CTYNAME = stringr::str_remove_all(CTYNAME, pattern = "(?:\\sCounty)*")
+  ) |>
+  dplyr::rename(County = CTYNAME, County_Population = POPESTIMATE) |>
+  dplyr::relocate(County_Population, .after = County_Age_Population)
+
+###_____________________________________________________________________________
+# age group populations for Iowa at the state (not county) level ----
+# work with the sc-est[year]-agesex-civ.csv files for this via
+# https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/state/asrh/
+###_____________________________________________________________________________
+
+# Iowa age groups at the state level for 2018-2022
+# clean Iowa age group populations
+# these are NOT standard populations
+us_state_age_pops <- readr::read_csv(file = iowa_state_age_pops_path)
+
+# get Iowa state age populations
+state_age_group_pops <- us_state_age_pops |>
+
+  # Iowa == State #19, and SEX == 0 is for totals not sex-specific
+  dplyr::filter(STATE == 19, SEX == 0) |>
+  dplyr::select(
+    -c(SUMLEV, REGION, DIVISION, STATE, NAME, SEX, ESTBASE2020_CIV)
+  ) |>
+  tidyr::pivot_longer(
+    cols = -AGE,
+    names_to = "Year",
+    values_to = "Population"
+  ) |>
+  dplyr::mutate(
+    Year = as.numeric(stringr::str_extract(string = Year, pattern = "\\d+")),
+    Age_Group = dplyr::if_else(
+      AGE < 5,
+      "0-4",
+      dplyr::if_else(
+        AGE >= 5 & AGE < 10,
+        "5-9",
+        dplyr::if_else(
+          AGE >= 10 & AGE < 15,
+          "10-14",
+          dplyr::if_else(
+            AGE >= 15 & AGE < 20,
+            "15-19",
+            dplyr::if_else(
+              AGE >= 20 & AGE < 25,
+              "20-24",
+              dplyr::if_else(
+                AGE >= 25 & AGE < 30,
+                "25-29",
+                dplyr::if_else(
+                  AGE >= 30 & AGE < 35,
+                  "30-34",
+                  dplyr::if_else(
+                    AGE >= 35 & AGE < 40,
+                    "35-39",
+                    dplyr::if_else(
+                      AGE >= 40 & AGE < 45,
+                      "40-44",
+                      dplyr::if_else(
+                        AGE >= 45 & AGE < 50,
+                        "45-49",
+                        dplyr::if_else(
+                          AGE >= 50 & AGE < 55,
+                          "50-54",
+                          dplyr::if_else(
+                            AGE >= 55 & AGE < 60,
+                            "55-59",
+                            dplyr::if_else(
+                              AGE >= 60 & AGE < 65,
+                              "60-64",
+                              dplyr::if_else(
+                                AGE >= 65 & AGE < 70,
+                                "65-69",
+                                dplyr::if_else(
+                                  AGE >= 70 & AGE < 75,
+                                  "70-74",
+                                  dplyr::if_else(
+                                    AGE >= 75 & AGE < 80,
+                                    "75-79",
+                                    dplyr::if_else(
+                                      AGE >= 80 & AGE < 85,
+                                      "80-84",
+                                      dplyr::if_else(
+                                        AGE >= 85 & AGE < 999,
+                                        "85+",
+                                        dplyr::if_else(
+                                          AGE >= 999,
+                                          "Total",
+                                          "Error",
+                                          missing = "Error"
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
+    Age_Group = factor(
+      Age_Group,
+      levels = c(
+        "0-4",
+        "5-9",
+        "10-14",
+        "15-19",
+        "20-24",
+        "25-29",
+        "30-34",
+        "35-39",
+        "40-44",
+        "45-49",
+        "50-54",
+        "55-59",
+        "60-64",
+        "65-69",
+        "70-74",
+        "75-79",
+        "80-84",
+        "85+",
+        "Total",
+        "Error"
+      )
+    )
+  ) |>
+  dplyr::select(Year, Age_Group, Population) |>
+  dplyr::summarize(
+    State_Population = sum(Population, na.rm = TRUE),
+    .by = c(Year, Age_Group)
+  )
+
+# standard US populations
+us_age_pops <- readr::read_tsv(
+  file = "https://seer.cancer.gov/stdpopulations/stdpop.18ages.txt",
+  col_names = FALSE
+)
+
+# clean US standard populations
+us_age_pops_clean <- us_age_pops |>
+  dplyr::filter(grepl(pattern = "^204", x = X1)) |>
+  dplyr::mutate(
+    Age_Group = stringr::str_sub(X1, start = 4, end = 6),
+    Population = stringr::str_sub(X1, start = 7, end = 14),
+    Population = as.numeric(stringr::str_remove(Population, pattern = "^0")),
+    Weight = round(Population / sum(Population), digits = 6)
+  ) |>
+  dplyr::select(-X1) |>
+  dplyr::mutate(
+    Age_Group = c(
+      "0-4",
+      "5-9",
+      "10-14",
+      "15-19",
+      "20-24",
+      "25-29",
+      "30-34",
+      "35-39",
+      "40-44",
+      "45-49",
+      "50-54",
+      "55-59",
+      "60-64",
+      "65-69",
+      "70-74",
+      "75-79",
+      "80-84",
+      "85+"
+    ),
+    Age_Group = factor(
+      Age_Group,
+      levels = c(
+        "0-4",
+        "5-9",
+        "10-14",
+        "15-19",
+        "20-24",
+        "25-29",
+        "30-34",
+        "35-39",
+        "40-44",
+        "45-49",
+        "50-54",
+        "55-59",
+        "60-64",
+        "65-69",
+        "70-74",
+        "75-79",
+        "80-84",
+        "85+"
+      )
+    )
+  ) |>
+  dplyr::rename(US_Population = Population)
+```
+
+```{r get_initial_counts}
+###_____________________________________________________________________________
+# Estimate age adjusted rates of injury prevalence resulting in inpatient hospitalization ----
+# based on the trauma registry
+###_____________________________________________________________________________
+
+# total falls trauma cases
+trauma_cases_years <- trauma_data_clean |>
+  injury_incident_count(Year, falls)
+
+# check overall trauma injury counts with injury location of Iowa
+trauma_data_clean_iowa <- trauma_data_clean |>
+  dplyr::filter(
+    grepl(pattern = "^ia$|iowa", x = Injury_State, ignore.case = T),
+    !is.na(Injury_County),
+    !Injury_County %in%
+      c(
+        "Not Applicable",
+        "Not Known",
+        "Not Known / Not Recorded",
+        "Not Known/Not Recorded",
+        "Rock Island"
+      )
+  )
+
+# get injury counts and case counts by year, county, and age group
+
+# injuries
+injury_counts <- trauma_data_clean_iowa |>
+  # it seems that registrars may enter incident_state as the state the patient is from
+  # observed Iowa counties paired with other states, which is improbable that it was meant as the county of another state
+  injury_incident_count(Year, Injury_County, Age_Group) |> # as the states in this dataset seem to have a very, very good spelling match with Iowa county names, so assumption is county and zip code are better sources
+  tidyr::complete(Year, Injury_County, Age_Group, fill = list(n = 0L)) |>
+  dplyr::arrange(Year, Injury_County, Age_Group) |> # returns 99 counties, and more accurate counts
+  dplyr::rename(injuries = n)
+
+# falls
+fall_counts <- trauma_data_clean_iowa |>
+  dplyr::filter(falls) |>
+  injury_incident_count(Year, Injury_County, Age_Group) |>
+  tidyr::complete(Year, Injury_County, Age_Group, fill = list(n = 0L)) |>
+  dplyr::arrange(Year, Injury_County, Age_Group) |> # returns 99 counties, and more accurate counts
+  dplyr::rename(falls = n)
+
+# falls and total injuries
+injury_fall_counts <- injury_counts |>
+  dplyr::left_join(
+    fall_counts,
+    by = dplyr::join_by(Year, Injury_County, Age_Group)
+  ) |>
+  dplyr::filter(Age_Group != "Missing") |>
+  dplyr::left_join(
+    age_group_pops_final,
+    by = c("Injury_County" = "County", "Age_Group", "Year")
+  ) |>
+  dplyr::left_join(us_age_pops_clean, by = "Age_Group")
+
+
+# get injury counts and case counts by year and age group
+
+# injury counts by age group ----
+iowa_injury_counts_age <- trauma_data_clean_iowa |>
+  # it seems that registrars may enter incident_state as the state the patient is from
+  # observed Iowa counties paired with other states, which is improbable that it was meant as the county of another state
+  # as the states in this dataset seem to have a very, very good spelling match with Iowa county names, so assumption is county and zip code are better sources
+  injury_incident_count(Year, Age_Group) |>
+  tidyr::complete(Year, Age_Group, fill = list(n = 0L)) |>
+  dplyr::arrange(Year, Age_Group) |> # returns 99 counties, and more accurate counts
+  dplyr::rename(injuries = n)
+
+# fall counts by age group ----
+iowa_fall_counts_age <- trauma_data_clean_iowa |>
+  dplyr::filter(falls) |>
+  injury_incident_count(Year, Age_Group) |>
+  tidyr::complete(Year, Age_Group, fill = list(n = 0L)) |>
+  dplyr::arrange(Year, Age_Group) |> # returns 99 counties, and more accurate counts
+  dplyr::rename(falls = n)
+
+# get falls and injuries together at the state level
+iowa_injury_fall_counts_age <- iowa_injury_counts_age |>
+  dplyr::left_join(
+    iowa_fall_counts_age,
+    by = dplyr::join_by(Year, Age_Group)
+  ) |>
+  dplyr::filter(Age_Group != "Missing") |>
+  dplyr::left_join(state_age_group_pops, by = c("Age_Group", "Year")) |>
+  dplyr::left_join(
+    us_age_pops_clean,
+    by = "Age_Group"
+  )
+
+```
+
+```{r calculate_county_rates}
+###_____________________________________________________________________________
+# Trauma data age adjustments ----
+###_____________________________________________________________________________
+
+# rates summarized by year and county
+
+# injuries
+injury_rates <- injury_fall_counts |>
+  calc_age_adjusted_rate(
+    count = injuries,
+    local_population = County_Age_Population,
+    standard_population_weight = Weight,
+    .by = c("Year", "Injury_County")
+  ) |>
+  dplyr::mutate(
+    pretty_label = ifelse(
+      Year %in% c(2020, 2023, 2024),
+      traumar::pretty_number(
+        x = Age_Adjusted_Rate,
+        n_decimal = 2
+      ),
+      ""
+    ),
+    .by = Injury_County
+  ) |>
+  dplyr::left_join(location_data, by = c("Injury_County" = "County")) |>
+  dplyr::rename(
+    injuries = Count,
+    injury_crude_rate = Crude_Rate,
+    injury_age_adjusted_rate = Age_Adjusted_Rate,
+    injury_pretty_label = pretty_label
+  )
+
+# falls
+fall_rates <- injury_fall_counts |>
+  calc_age_adjusted_rate(
+    count = falls,
+    local_population = County_Age_Population,
+    standard_population_weight = Weight,
+    .by = c("Year", "Injury_County")
+  ) |>
+  dplyr::mutate(
+    pretty_label = ifelse(
+      Year %in% c(2020, 2023, 2024),
+      traumar::pretty_number(
+        x = Age_Adjusted_Rate,
+        n_decimal = 2
+      ),
+      ""
+    ),
+    .by = Injury_County
+  ) |>
+  dplyr::left_join(location_data, by = c("Injury_County" = "County")) |>
+  dplyr::rename(
+    falls = Count,
+    fall_crude_rate = Crude_Rate,
+    fall_age_adjusted_rate = Age_Adjusted_Rate,
+    fall_pretty_label = pretty_label
+  )
+
+# join the columns of the injury and fall rates by county
+injury_fall_rates <- injury_rates |>
+  dplyr::left_join(
+    fall_rates,
+    by = dplyr::join_by(Year, Injury_County, Designation, Urbanicity)
+  ) |>
+  dplyr::relocate(Designation, .after = tidyselect::last_col()) |>
+  dplyr::relocate(Urbanicity, .after = Designation)
+
+```
+
+```{r calculate_state_rates}
+###_____________________________________________________________________________
+# rates at the state level ----
+###_____________________________________________________________________________
+
+# injuries
+iowa_injury_rate <- iowa_injury_fall_counts_age |>
+  calc_age_adjusted_rate(
+    count = injuries,
+    local_population = State_Population,
+    standard_population_weight = Weight,
+    .by = "Year",
+    rate = 100000
+  ) |>
+  dplyr::rename(
+    injuries = Count,
+    injury_crude_rate = Crude_Rate,
+    injury_age_adjusted_rate = Age_Adjusted_Rate
+  )
+
+# falls
+iowa_fall_rate <- iowa_injury_fall_counts_age |>
+  calc_age_adjusted_rate(
+    count = falls,
+    local_population = State_Population,
+    standard_population_weight = Weight,
+    .by = "Year",
+    rate = 100000
+  ) |>
+  dplyr::rename(
+    falls = Count,
+    fall_crude_rate = Crude_Rate,
+    fall_age_adjusted_rate = Age_Adjusted_Rate
+  )
+
+# get the state-level fall and injury rates into one table
+iowa_injury_fall_rate <- iowa_injury_rate |>
+  dplyr::left_join(iowa_fall_rate, by = dplyr::join_by(Year))
+
 ``` 
 
+```{r create_sf}
+# Get Iowa counties as sf object
+iowa_counties <- tigris::counties(state = "IA", cb = TRUE, class = "sf")
+
+# Join rates and reproject to WGS84
+injury_fall_rates_sf <- iowa_counties |>
+  dplyr::left_join(
+    injury_fall_rates,
+    by = dplyr::join_by(NAME == Injury_County)
+  ) |>
+  sf::st_transform(crs = 4326) # WGS84 for Leaflet
+
+```
+
+```{r map_pals}
+
+# Shared palette function (magma)
+pal_shared <- leaflet::colorNumeric(
+  palette = viridis::plasma(256, direction = -1),
+  domain = c(
+    min(
+      c(
+        injury_fall_rates_sf$injury_age_adjusted_rate,
+        injury_fall_rates_sf$fall_age_adjusted_rate
+      ),
+      na.rm = TRUE
+    ),
+    max(
+      c(
+        injury_fall_rates_sf$injury_age_adjusted_rate,
+        injury_fall_rates_sf$fall_age_adjusted_rate
+      ),
+      na.rm = TRUE
+    )
+  )
+)
+
+```
+
+```{r leaflet_map}
+
+# Build the leaflet map
+
+# Unique years
+years <- sort(unique(injury_fall_rates_sf$Year))
+
+# Start leaflet map
+map <- leaflet::leaflet() |>
+  leaflet::addTiles()
+
+# Add layers per Year × Indicator
+for (yr in years) {
+  # Injury polygons
+  map <- map |>
+    leaflet::addPolygons(
+      data = dplyr::filter(injury_fall_rates_sf, Year == yr),
+      fillColor = ~ pal_shared(injury_age_adjusted_rate),
+      weight = 1,
+      color = "white",
+      fillOpacity = 0.7,
+      group = paste("Injury", yr),
+      label = ~ paste(
+        NAMELSAD,
+        paste0("Year: ", Year),
+        paste0("Injury Rate: ", round(injury_age_adjusted_rate, 1)),
+        sep = " || "
+      ),
+      labelOptions = leaflet::labelOptions(
+        direction = "auto",
+        opacity = 0.8,
+        textsize = "12px",
+        style = list("font-family" = "Work Sans"),
+        offset = c(0, 0)
+      )
+    )
+
+  # Fall polygons
+  map <- map |>
+    leaflet::addPolygons(
+      data = dplyr::filter(injury_fall_rates_sf, Year == yr),
+      fillColor = ~ pal_shared(fall_age_adjusted_rate),
+      weight = 1,
+      color = "white",
+      fillOpacity = 0.7,
+      group = paste("Falls", yr),
+      label = ~ paste(
+        NAMELSAD,
+        paste0("Year: ", Year),
+        paste0("Fall Rate: ", round(fall_age_adjusted_rate, 1)),
+        sep = " || "
+      ),
+      labelOptions = leaflet::labelOptions(
+        direction = "auto",
+        opacity = 0.8,
+        textsize = "12px",
+        style = list("font-family" = "Work Sans"),
+        offset = c(0, 0)
+      )
+    )
+}
+
+# Add single legends for Injury and Falls (full range)
+trauma_map <- map |>
+  leaflet::addLegend(
+    pal = pal_shared,
+    values = injury_fall_rates_sf$injury_age_adjusted_rate,
+    title = "Injury Rate",
+    position = "topleft",
+    opacity = 0.7,
+    group = "Legend"
+  ) |>
+  leaflet::addLegend(
+    pal = pal_shared,
+    values = injury_fall_rates_sf$fall_age_adjusted_rate,
+    title = "Fall Rate",
+    position = "topleft",
+    opacity = 0.7,
+    group = "Legend"
+  ) |>
+  # Add layers control on right with slight transparency
+  leaflet::addLayersControl(
+    baseGroups = as.vector(outer(c("Injury", "Falls"), years, paste)),
+    options = leaflet::layersControlOptions(collapsed = FALSE)
+  ) |>
+  htmlwidgets::onRender(
+    "
+    function(el,x){
+      var ctl = el.getElementsByClassName('leaflet-control-layers')[0];
+      if(ctl) ctl.style.opacity = 0.8;
+    }
+  "
+  )
+
+```
 
 # Objectives
-Today, we will learn:
+Today we will look at...
 
+- injury data where injuries occurred in Iowa
 - overall statistics on falls
-- survival among patients who fell
-- the distribution of falls across: 
-  - demographic groups
+- the distribution of falls across:
   - geographic areas
+  - demographic groups
+- survival among patients who fell
 
 # About the data
 Source: Iowa Trauma Registry from 2020-2024.
@@ -320,7 +939,7 @@ Source: Iowa Trauma Registry from 2020-2024.
 
 :::
 
-```{r initial_counts, echo=FALSE}
+```{r initial_counts}
 
 # Get counts
 falls_counts <- trauma_data_clean |>
@@ -387,4 +1006,100 @@ gt::gtsave(
 # Falls at a glance
 Year over year, since 2020, falls make up > 55% of all injury events in Iowa. Same-level falls grow rapidly.
 
-![](figures/falls_count_gt.png){fig-alt="A statistical table showing counts of fall events in Iowa since 2020." fig-cap=""}
+![](figures/falls_count_gt.png){fig-alt="A statistical table showing counts of fall events in Iowa 2020-2024." fig-cap=""}
+
+# At what rate do we fall?
+```{r rate_table}
+
+# generate the state-level rates gt table
+iowa_injury_fall_rate_gt <- iowa_injury_fall_rate |>
+  gt::gt() |>
+  gt::fmt_number(columns = -Year, decimals = 2, drop_trailing_zeros = TRUE) |>
+  gt::cols_label(
+    injuries ~ "Injury Events",
+    injury_crude_rate ~ "Injury Crude Rate",
+    injury_age_adjusted_rate ~ "Injury Age Adjusted Rate",
+    falls ~ "Falls",
+    fall_crude_rate ~ "Falls Crude Rate",
+    fall_age_adjusted_rate ~ "Falls Age Adjusted Rate"
+  ) |>
+  tab_style_hhs(border_cols = injuries:fall_age_adjusted_rate)
+
+# save the gt table
+gt::gtsave(
+  data = iowa_injury_fall_rate_gt,
+  filename = "iowa_injury_fall_rate_gt.png",
+  vwidth = 800,
+  vheight = 800 / 1.333333,
+  path = figures
+)
+```
+
+![](figures/iowa_injury_fall_rate_gt.png){fig-alt="A statistical table showing counts of total injury and fall events with corresponding rates in Iowa 2020-2024." fig-cap=""}
+
+# Who falls the most?
+```{r count_age_range}
+
+# get counts with annual trends
+age_range_counts <- trauma_data_clean_iowa |>
+  dplyr::mutate(
+    Age_Range = ifelse(is.na(Age_Range), "Missing", Age_Range),
+    Age_Range = factor(
+      Age_Range,
+      levels = c(
+        "0-9",
+        "10-19",
+        "20-29",
+        "30-39",
+        "40-49",
+        "50-59",
+        "60-69",
+        "70-79",
+        "80-89",
+        "90-99",
+        "100+",
+        "Missing"
+      )
+    )
+  ) |>
+  dplyr::filter(falls) |>
+  injury_incident_count(Year, Age_Range) |>
+  tidyr::pivot_wider(
+    id_cols = Age_Range,
+    names_from = Year,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  janitor::adorn_totals(where = "both") |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    `2020 - 2024 Trend` = list(c(`2020`, `2021`, `2022`, `2023`, `2024`))
+  ) |>
+  dplyr::ungroup()
+
+# get gt table
+age_range_gt <- age_range_counts |>
+  gt::gt() |>
+  gt::fmt_number(columns = `2020`:Total, drop_trailing_zeros = TRUE) |>
+  gt::cols_label(
+    Age_Range ~ "Age Range"
+  ) |>
+  gtExtras::gt_plt_sparkline(
+    column = `2020 - 2024 Trend`,
+    type = "points",
+    same_limit = FALSE,
+    label = FALSE
+  ) |>
+  tab_style_hhs(border_cols = `2020`:`2020 - 2024 Trend`)
+
+# save the gt table
+gt::gtsave(data = age_range_gt, filename = "age_range_gt.png", path = figures)
+
+```
+
+![](figures/age_range_gt.png){fig-align="center" fig-alt="A statistical table of the count of falls by 10-year age groups from 0-9 to 100+ along with sparklines showing trends by age group from 2020-2024." fig-cap=""}
+
+# Where do we fall?
+```{r run_map, include=TRUE}
+trauma_map
+```
