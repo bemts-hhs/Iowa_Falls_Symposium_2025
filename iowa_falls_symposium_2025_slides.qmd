@@ -828,7 +828,11 @@ pal_shared <- leaflet::colorNumeric(
 years <- sort(unique(injury_fall_rates_sf$Year))
 
 # Start leaflet map
-map <- leaflet::leaflet() |>
+map <- leaflet::leaflet(
+  options = leaflet::leafletOptions(
+    zoomControl = FALSE
+  )
+) |>
   leaflet::addTiles()
 
 # Add layers per Year × Indicator
@@ -896,14 +900,14 @@ trauma_map <- map |>
     pal = pal_shared,
     values = injury_fall_rates_sf$fall_age_adjusted_rate,
     title = "Fall Rate",
-    position = "topleft",
+    position = "bottomleft",
     opacity = 0.7,
     group = "Legend"
   ) |>
   # Add layers control on right with slight transparency
   leaflet::addLayersControl(
     baseGroups = as.vector(outer(c("Injury", "Falls"), years, paste)),
-    options = leaflet::layersControlOptions(collapsed = FALSE)
+    options = leaflet::layersControlOptions(collapsed = TRUE)
   ) |>
   htmlwidgets::onRender(
     "
@@ -911,8 +915,18 @@ trauma_map <- map |>
       var ctl = el.getElementsByClassName('leaflet-control-layers')[0];
       if(ctl) ctl.style.opacity = 0.8;
     }
-  "
+    "
   )
+
+# Wrap with alt text for accessibility and force map height
+trauma_map <- htmltools::tags$div(
+  role = "img",
+  `aria-label` = "Interactive choropleth map of Iowa counties showing injury and fall rates from 2020 to 2024.",
+  `aria-describedby` = "map-desc",
+  style = "height: 80vh;",
+  trauma_map
+)
+
 
 ```
 
@@ -1008,7 +1022,7 @@ Year over year, since 2020, falls make up > 55% of all injury events in Iowa. Sa
 
 ![](figures/falls_count_gt.png){fig-alt="A statistical table showing counts of fall events in Iowa 2020-2024." fig-cap=""}
 
-# At what rate do we fall?
+# What is the fall rate?
 ```{r rate_table}
 
 # generate the state-level rates gt table
@@ -1035,9 +1049,12 @@ gt::gtsave(
 )
 ```
 
-![](figures/iowa_injury_fall_rate_gt.png){fig-alt="A statistical table showing counts of total injury and fall events with corresponding rates in Iowa 2020-2024." fig-cap=""}
+![](figures/iowa_injury_fall_rate_gt.png){fig-align="center" fig-alt="A statistical table showing counts of total injury and fall events with corresponding rates in Iowa 2020-2024." fig-cap=""}
 
 # Who falls the most?
+In the upcoming slides, we will explore fall events by patient demographic characteristics.
+
+# Age Groups
 ```{r count_age_range}
 
 # get counts with annual trends
@@ -1071,6 +1088,15 @@ age_range_counts <- trauma_data_clean_iowa |>
     values_fill = 0
   ) |>
   janitor::adorn_totals(where = "both") |>
+  # compute % of Total but exclude the "Total" row from denominator
+  dplyr::mutate(
+    pct_of_total = ifelse(
+      Age_Range == "Total",
+      1,
+      Total / sum(Total[Age_Range != "Total"], na.rm = TRUE)
+    ),
+    .after = Total
+  ) |>
   dplyr::rowwise() |>
   dplyr::mutate(
     `2020 - 2024 Trend` = list(c(`2020`, `2021`, `2022`, `2023`, `2024`))
@@ -1084,20 +1110,393 @@ age_range_gt <- age_range_counts |>
   gt::cols_label(
     Age_Range ~ "Age Range"
   ) |>
+  # bar chart percentage column before sparkline
+  gtExtras::gt_plt_bar_pct(
+    column = pct_of_total,
+    scaled = FALSE,
+    labels = TRUE
+  ) |>
   gtExtras::gt_plt_sparkline(
     column = `2020 - 2024 Trend`,
     type = "points",
     same_limit = FALSE,
     label = FALSE
   ) |>
-  tab_style_hhs(border_cols = `2020`:`2020 - 2024 Trend`)
+  gt::cols_label(
+    pct_of_total ~ "% of Total"
+  ) |>
+  tab_style_hhs(border_cols = `2020`:`2020 - 2024 Trend`) |>
+  gt::tab_style(
+    style = gt::cell_fill(color = "lightyellow"),
+    locations = gt::cells_body(
+      columns = Total,
+      rows = Total > 2300 & Age_Range != "Total"
+    )
+  )
 
 # save the gt table
 gt::gtsave(data = age_range_gt, filename = "age_range_gt.png", path = figures)
 
 ```
 
-![](figures/age_range_gt.png){fig-align="center" fig-alt="A statistical table of the count of falls by 10-year age groups from 0-9 to 100+ along with sparklines showing trends by age group from 2020-2024." fig-cap=""}
+![](figures/age_range_gt.png){fig-align="center" fig-alt="A statistical table of the count of falls by 10-year age groups from 0-9 to 100+ along with sparklines showing trends by age group from 2020-2024. The groups 0-9, 40-49, 50-59, 60-69, 80-89, and 90-99 are highlighted in light yellow as they have the highest counts and mostly increasing trends year over year." fig-cap=""}
+
+# Patient Sex
+```{r count_sex}
+
+sex_counts <- trauma_data_clean_iowa |>
+  dplyr::rename(Patient_Sex = Patient_Gender) |>
+  dplyr::mutate(
+    Patient_Sex = ifelse(
+      is.na(Patient_Sex) |
+        grepl(pattern = "not\\s", x = Patient_Sex, ignore.case = TRUE),
+      "Missing",
+      Patient_Sex
+    )
+  ) |>
+  dplyr::filter(falls) |>
+  injury_incident_count(Year, Patient_Sex) |>
+  tidyr::complete(Year, Patient_Sex, fill = list(n = 0)) |>
+  tidyr::pivot_wider(
+    id_cols = Patient_Sex,
+    names_from = Year,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  janitor::adorn_totals(where = "both")
+
+# capture the ordering from the most recent year (or whichever you want)
+sex_order_levels <- sex_counts |>
+  dplyr::filter(!Patient_Sex %in% c("Missing", "Total")) |>
+  dplyr::arrange(desc(Total)) |>
+  dplyr::pull(Patient_Sex) |>
+  unique()
+
+# build final table with correct order
+sex_counts <- sex_counts |>
+  dplyr::mutate(
+    Patient_Sex = forcats::fct_relevel(
+      Patient_Sex,
+      c(sex_order_levels, "Missing", "Total")
+    )
+  ) |>
+  dplyr::arrange(Patient_Sex) |>
+  # compute % of Total but exclude the "Total" row from denominator
+  dplyr::mutate(
+    pct_of_total = ifelse(
+      Patient_Sex == "Total",
+      1,
+      Total / sum(Total[Patient_Sex != "Total"], na.rm = TRUE)
+    ),
+    .after = Total
+  ) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    `2020 - 2024 Trend` = list(c(`2020`, `2021`, `2022`, `2023`, `2024`)),
+    dplyr::across(
+      `2020`:Total,
+      ~ traumar::small_count_label(var = ., cutoff = 6, replacement = NA_real_)
+    )
+  ) |>
+  dplyr::ungroup()
+
+# get gt table
+sex_gt <- sex_counts |>
+  gt::gt() |>
+  gt::fmt_number(columns = `2020`:Total, drop_trailing_zeros = TRUE) |>
+  gt::cols_label(
+    Patient_Sex ~ "Patient Sex"
+  ) |>
+  gtExtras::gt_plt_sparkline(
+    column = `2020 - 2024 Trend`,
+    type = "points",
+    same_limit = FALSE,
+    label = FALSE
+  ) |>
+  gt::cols_label(
+    pct_of_total ~ "% of Total"
+  ) |>
+  # bar chart percentage column before sparkline
+  gtExtras::gt_plt_bar_pct(
+    column = pct_of_total,
+    scaled = FALSE,
+    labels = TRUE
+  ) |>
+  # Add footnote to NA cells
+  gt::tab_footnote(
+    footnote = "Masked to protect confidentiality.",
+    locations = gt::cells_body(
+      columns = Patient_Sex,
+      rows = Patient_Sex == "Intersex"
+    )
+  ) |>
+  gt::opt_footnote_marks(marks = "standard") |>
+  gt::sub_missing(columns = `2020`:pct_of_total) |>
+  tab_style_hhs(border_cols = `2020`:`2020 - 2024 Trend`)
+
+# save the gt table
+gt::gtsave(data = sex_gt, filename = "sex_gt.png", path = figures)
+
+```
+
+![](figures/sex_gt.png){fig-align="center" fig-alt="A statistical table of the count of falls by patient biological sex with sparklines and 100% bar plots for each sex category." fig-cap=""}
+
+# Patient Race
+```{r counts_race}
+
+# get counts with annual trends
+race_counts <- trauma_data_clean_iowa |>
+  dplyr::mutate(
+    Patient_Race = ifelse(
+      is.na(Patient_Race) |
+        grepl(pattern = "not\\s|select", x = Patient_Race, ignore.case = TRUE),
+      "Missing",
+      Patient_Race
+    ),
+    Patient_Race = ifelse(
+      grepl(pattern = "american indian", x = Patient_Race, ignore.case = TRUE),
+      "AIAN",
+      ifelse(
+        grepl(pattern = "black", x = Patient_Race, ignore.case = TRUE),
+        "Black",
+        ifelse(
+          grepl(pattern = "native", x = Patient_Race, ignore.case = TRUE),
+          "NHOPI",
+          Patient_Race
+        )
+      )
+    )
+  ) |>
+  dplyr::filter(falls) |>
+  injury_incident_count(Year, Patient_Race) |>
+  tidyr::complete(Year, Patient_Race, fill = list(n = 0)) |>
+  tidyr::pivot_wider(
+    id_cols = Patient_Race,
+    names_from = Year,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  janitor::adorn_totals(where = "both")
+
+# programmatically capture order, excluding "Missing"
+race_order_levels <- race_counts |>
+  dplyr::filter(!Patient_Race %in% c("Missing", "Total")) |>
+  dplyr::arrange(desc(Total)) |>
+  dplyr::pull(Patient_Race) |>
+  unique()
+
+# reshape and relevel
+race_counts <- race_counts |>
+  # compute % of Total but exclude the "Total" row from denominator
+  dplyr::mutate(
+    pct_of_total = ifelse(
+      Patient_Race == "Total",
+      1,
+      Total / sum(Total[Patient_Race != "Total"], na.rm = TRUE)
+    ),
+    .after = Total
+  ) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    `2020 - 2024 Trend` = list(c(`2020`, `2021`, `2022`, `2023`, `2024`)),
+    dplyr::across(
+      `2020`:Total,
+      ~ traumar::small_count_label(var = ., cutoff = 6, replacement = NA_real_)
+    )
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    Patient_Race = forcats::fct_relevel(
+      Patient_Race,
+      c(race_order_levels, "Missing", "Total")
+    )
+  ) |>
+  dplyr::arrange(Patient_Race)
+
+# get gt table
+race_gt <- race_counts |>
+  gt::gt() |>
+  gt::fmt_number(columns = `2020`:Total, drop_trailing_zeros = TRUE) |>
+  gt::cols_label(
+    Patient_Race ~ "Patient Race"
+  ) |>
+  # bar chart percentage column before sparkline
+  gtExtras::gt_plt_bar_pct(
+    column = pct_of_total,
+    scaled = FALSE,
+    labels = TRUE
+  ) |>
+  gtExtras::gt_plt_sparkline(
+    column = `2020 - 2024 Trend`,
+    type = "points",
+    same_limit = FALSE,
+    label = FALSE
+  ) |>
+  gt::cols_label(
+    pct_of_total ~ "% of Total"
+  ) |>
+  gt::sub_missing(columns = `2020`:Total) |>
+  tab_style_hhs(border_cols = `2020`:`2020 - 2024 Trend`) |>
+  gt::tab_style(
+    style = gt::cell_fill(color = "lightyellow"),
+    locations = gt::cells_body(
+      columns = Total,
+      rows = Total > 300 & !Patient_Race %in% c("Total", "Missing")
+    )
+  ) |>
+  gt::tab_footnote(
+    footnote = gt::md(
+      "**Hispanic** is typically thought of as patient's ethnicity."
+    ),
+    locations = gt::cells_body(
+      columns = Patient_Race,
+      rows = Patient_Race == "Hispanic"
+    )
+  ) |>
+  gt::opt_footnote_marks(marks = "standard")
+
+# save the gt table
+gt::gtsave(data = race_gt, filename = "race_gt.png", path = figures)
+
+```
+
+![](figures/race_gt.png){fig-alt="A statistical table showing the count of injury events by patient race group, with sparklines showing the trend from 2020-2024 and 100% bar plots." fig-align="center"}
+
+# Insurance
+```{r counts_insurance}
+
+# capture counts and preserve ordering by desc(n)
+insurance_counts <- trauma_data_clean_iowa |>
+  dplyr::mutate(
+    Financial_Primary_Method_of_Payment = ifelse(
+      is.na(Financial_Primary_Method_of_Payment) |
+        grepl(
+          pattern = "not\\s(?:known|available)|select",
+          x = Financial_Primary_Method_of_Payment,
+          ignore.case = TRUE
+        ),
+      "Missing",
+      Financial_Primary_Method_of_Payment
+    ),
+    Financial_Primary_Method_of_Payment = ifelse(
+      grepl(
+        pattern = "not billed|institution|worker|liability|managed|unreimbursed",
+        x = Financial_Primary_Method_of_Payment,
+        ignore.case = TRUE
+      ),
+      "Other",
+      ifelse(
+        grepl(
+          pattern = "private pay|none",
+          x = Financial_Primary_Method_of_Payment,
+          ignore.case = TRUE
+        ),
+        "Self Pay",
+        Financial_Primary_Method_of_Payment
+      )
+    )
+  ) |>
+  dplyr::filter(falls) |>
+  injury_incident_count(Year, Financial_Primary_Method_of_Payment) |>
+  tidyr::complete(
+    Year,
+    Financial_Primary_Method_of_Payment,
+    fill = list(n = 0)
+  ) |>
+  tidyr::pivot_wider(
+    id_cols = Financial_Primary_Method_of_Payment,
+    names_from = Year,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  janitor::adorn_totals(where = "both")
+
+# programmatically derive levels from latest year, excluding "Missing"
+insurance_order_levels <- insurance_counts |>
+  dplyr::filter(
+    !Financial_Primary_Method_of_Payment %in% c("Missing", "Total")
+  ) |>
+  dplyr::arrange(desc(Total)) |>
+  dplyr::pull(Financial_Primary_Method_of_Payment) |>
+  unique()
+
+# reshape, add totals, small-count labeling, and relevel
+insurance_counts <- insurance_counts |>
+  # compute % of Total but exclude the "Total" row from denominator
+  dplyr::mutate(
+    pct_of_total = ifelse(
+      Financial_Primary_Method_of_Payment == "Total",
+      1,
+      Total /
+        sum(Total[Financial_Primary_Method_of_Payment != "Total"], na.rm = TRUE)
+    ),
+    .after = Total
+  ) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    `2020 - 2024 Trend` = list(c(`2020`, `2021`, `2022`, `2023`, `2024`)),
+    dplyr::across(
+      `2020`:Total,
+      ~ traumar::small_count_label(var = ., cutoff = 6, replacement = NA_real_)
+    )
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    Financial_Primary_Method_of_Payment = forcats::fct_relevel(
+      Financial_Primary_Method_of_Payment,
+      c(insurance_order_levels, "Missing", "Total")
+    )
+  ) |>
+  dplyr::arrange(Financial_Primary_Method_of_Payment)
+
+# build gt
+insurance_gt <- insurance_counts |>
+  gt::gt() |>
+  gt::fmt_number(columns = `2020`:Total, drop_trailing_zeros = TRUE) |>
+  gt::cols_label(
+    Financial_Primary_Method_of_Payment ~ "Patient Payment Method"
+  ) |>
+  # bar chart percentage column before sparkline
+  gtExtras::gt_plt_bar_pct(
+    column = pct_of_total,
+    scaled = FALSE,
+    labels = TRUE
+  ) |>
+  gtExtras::gt_plt_sparkline(
+    column = `2020 - 2024 Trend`,
+    type = "points",
+    same_limit = FALSE,
+    label = FALSE
+  ) |>
+  gt::cols_label(
+    pct_of_total ~ "% of Total"
+  ) |>
+  gt::sub_missing(columns = `2020`:Total) |>
+  tab_style_hhs(border_cols = `2020`:`2020 - 2024 Trend`) |>
+  gt::tab_style(
+    style = gt::cell_fill(color = "lightyellow"),
+    locations = gt::cells_body(
+      columns = Total,
+      rows = Total > 1000 &
+        !Financial_Primary_Method_of_Payment %in% c("Total", "Missing")
+    )
+  ) |>
+  gt::tab_footnote(
+    footnote = "Masked to protect confidentiality.",
+    locations = gt::cells_body(
+      column = Financial_Primary_Method_of_Payment,
+      rows = Financial_Primary_Method_of_Payment %in%
+        c("Worker's compensation", "Unreimbursed")
+    )
+  ) |>
+  gt::opt_footnote_marks(marks = "standard")
+
+# save
+gt::gtsave(data = insurance_gt, filename = "insurance_gt.png", path = figures)
+
+```
+
+![](figures/insurance_gt.png){fig-alt="A statistical table showing the counts per year from 2020-2024 of the number of injury events by patients' primary payment method. There is a sparkline graph and 100% bar plots in the last columns showing the trend from 2020-2024. Small counts are masked to protect patient confidentiality." fig-align="center"}
 
 # Where do we fall?
 ```{r run_map, include=TRUE}

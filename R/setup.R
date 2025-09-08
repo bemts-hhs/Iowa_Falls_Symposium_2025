@@ -15,23 +15,21 @@
 #   'usethis',
 #   'devtools',
 #   'tidyverse',
-#   'tidymodels',
-#   'textrecipes',
-#   'embed',
-#   'vip',
 #   'traumar',
 #   'nemsqar',
 #   'naniar',
 #   'cli',
 #   'ggrepel',
 #   'ggthemes',
-#   'treemapify',
 #   'janitor',
 #   'gt',
 #   'gtsummary',
 #   'gtExtras',
 #   'webshot2',
-#   'svglite'
+#   'svglite',
+#   'DT',
+#   'leaflet',
+#   'sparkline'
 # ))
 
 ###_____________________________________________________________________________
