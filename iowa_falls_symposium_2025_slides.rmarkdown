@@ -30,7 +30,7 @@ execute:
 ---
 
 <!-- Setup code for the presentation -->
-```{r setup}
+```{r}
 
 #| label: setup
 
@@ -66,7 +66,7 @@ source(setup)
 ```
 
 <!-- Code to load data for presentation -->
-```{r load_data}
+```{r}
 
 #| label: load_data
 
@@ -157,7 +157,7 @@ trauma_data <- dplyr::bind_rows(
 ```
 
 <!-- Data manipulation -->
-```{r add_data_features}
+```{r}
 
 #| label: add_data_features
 
@@ -591,7 +591,7 @@ us_age_pops_clean <- us_age_pops |>
 ```
 
 <!-- Initial count data -->
-```{r get_initial_counts}
+```{r}
 
 #| label: get_initial_counts
 
@@ -688,7 +688,7 @@ iowa_injury_fall_counts_age <- iowa_injury_counts_age |>
 ```
 
 <!-- Calculate county-level crude and age adjusted rates -->
-```{r calculate_county_rates}
+```{r}
 
 #| label: calculate_county_rates
 
@@ -764,7 +764,7 @@ injury_fall_rates <- injury_rates |>
 ```
 
 <!-- Calculate state-level crude and age adjusted rates -->
-```{r calculate_state_rates}
+```{r}
 
 #| label: calculate_state_rates
 
@@ -808,11 +808,7 @@ iowa_injury_fall_rate <- iowa_injury_rate |>
 
 ``` 
 
-<!-- Create the sf object for the leaflet map -->
 ```{r create_sf}
-
-#| label: create_sf
-
 # Get Iowa counties as sf object
 iowa_counties <- tigris::counties(state = "IA", cb = TRUE, class = "sf")
 
@@ -826,10 +822,7 @@ injury_fall_rates_sf <- iowa_counties |>
 
 ```
 
-<!-- Helper functions for palettes within leaflet -->
 ```{r map_pals}
-
-#| label: map_pals
 
 # Injury palette function (magma)
 pal_injury <- leaflet::colorNumeric(
@@ -851,10 +844,7 @@ pal_falls <- leaflet::colorNumeric(
 
 ```
 
-<!-- Create the leaflet map -->
 ```{r leaflet_map}
-
-#| label: leaflet_map
 
 # Build the leaflet map
 
@@ -987,10 +977,7 @@ Source: Iowa Trauma Registry from 2020-2024.
 
 :::
 
-<!-- Calculate initial counts for the overall falls -->
-```{r overall_counts}
-
-#| label: overall_counts
+```{r initial_counts}
 
 # Get counts
 falls_counts <- trauma_data_clean |>
@@ -1063,10 +1050,7 @@ Year over year, since 2020, falls make up > 55% of all injury events in Iowa. Sa
 ![](figures/falls_count_gt.png){fig-alt="A statistical table showing counts of fall events in Iowa 2020-2024." fig-cap=""}
 
 ## What is the fall rate?
-<!-- Generate the rate table -->
 ```{r rate_table}
-
-#| label: rate_table
 
 # generate the state-level rates gt table
 iowa_injury_fall_rate_gt <- iowa_injury_fall_rate |>
@@ -1098,10 +1082,7 @@ gt::gtsave(
 In the upcoming slides, we will explore count data related to fall events by patient demographic characteristics.
 
 ## Age Groups
-<!-- Age group fall counts and gt table -->
 ```{r count_age_range}
-
-#| label: count_age_range
 
 # get counts with annual trends
 age_range_counts <- trauma_data_clean_iowa |>
@@ -1188,12 +1169,8 @@ gt::gtsave(data = age_range_gt, filename = "age_range_gt.png", path = figures)
 ![](figures/age_range_gt.png){fig-align="center" fig-alt="A statistical table of the count of falls by 10-year age groups from 0-9 to 100+ along with sparklines showing trends by age group from 2020-2024. The groups 0-9, 40-49, 50-59, 60-69, 80-89, and 90-99 are highlighted in light yellow as they have the highest counts and mostly increasing trends year over year." fig-cap=""}
 
 ## Patient Sex
-<!-- Patient sex group fall counts and gt table -->
 ```{r count_sex}
 
-#| label: count_sex
-
-# get counts
 sex_counts <- trauma_data_clean_iowa |>
   dplyr::rename(Patient_Sex = Patient_Gender) |>
   dplyr::mutate(
@@ -1292,10 +1269,7 @@ gt::gtsave(data = sex_gt, filename = "sex_gt.png", path = figures)
 ![](figures/sex_gt.png){fig-align="center" fig-alt="A statistical table of the count of falls by patient biological sex with sparklines and 100% bar plots for each sex category." fig-cap=""}
 
 ## Patient Race
-<!-- Patient race group counts and gt table -->
 ```{r counts_race}
-
-#| label: counts_race
 
 # get counts with annual trends
 race_counts <- trauma_data_clean_iowa |>
@@ -1416,10 +1390,7 @@ gt::gtsave(data = race_gt, filename = "race_gt.png", path = figures)
 ![](figures/race_gt.png){fig-alt="A statistical table showing the count of injury events by patient race group, with sparklines showing the trend from 2020-2024 and 100% bar plots." fig-align="center"}
 
 ## Insurance
-<!-- Patient insurance fall counts and gt table -->
 ```{r counts_insurance}
-
-#| label: counts_insurance
 
 # capture counts and preserve ordering by desc(n)
 insurance_counts <- trauma_data_clean_iowa |>
@@ -1555,11 +1526,7 @@ gt::gtsave(data = insurance_gt, filename = "insurance_gt.png", path = figures)
 ![](figures/insurance_gt.png){fig-alt="A statistical table showing the counts per year from 2020-2024 of the number of injury events by patients' primary payment method. There is a sparkline graph and 100% bar plots in the last columns showing the trend from 2020-2024. Small counts are masked to protect patient confidentiality." fig-align="center"}
 
 # Where do we fall?
-<!-- Generate the leaflet map -->
 ```{r run_map, include=TRUE}
-
-#| label: run_map
-
 trauma_map
 ```
 
@@ -1568,10 +1535,8 @@ Now, we will learn more about the morbidity and mortality related to falls in Io
 
 ## Body regions affected
 Falls disproportionaely result in traumatic brain injury among residents in the state.
-<!-- Body region affected by falls count and gt table -->
-```{r counts_body_region}
 
-#| label: counts_body_region
+```{r counts_body_region}
 
 # capture counts and preserve ordering by desc(n)
 body_region_counts <- trauma_data_clean_iowa |>
@@ -1714,7 +1679,7 @@ Here, we see risk-adjusted mortality for groups of patients based on their predi
 
 :::
 
-# Takeaways (continued)
+# Takeaways
 
 ::: {.incremental}
 
