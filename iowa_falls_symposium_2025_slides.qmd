@@ -2,7 +2,7 @@
 title: "Not Falling Short"
 subtitle: "Injury Epidemiology of Falls in Iowa"
 author: "Nicolas Foss, Ed.D., MS"
-date: "2025-09-26" # adjust to actual date
+date: "2025-09-26"
 format: 
   letterbox-revealjs:
     theme: custom.scss
@@ -18,7 +18,7 @@ format:
     progress: false
     title-slide-attributes:
       class: title-slide
-      data-background-color: white # your primary blue
+      data-background-color: white
       data-background-size: cover
       data-background-position: center
 execute: 
@@ -112,12 +112,6 @@ source(setup)
 ###_____________________________________________________________________________
 # Load the files used to categorize mechanism and nature of injury
 # based on the ICD-10 injury code
-# NOTICE THAT IN ORDER TO GET THE SAME COUNTS AS IN TABLEAU WITH REGARD TO THE
-# CAUSE OF INJURY / NATURE OF INJURY / body region (lvl1 and lvl2) you must run
-# RUN distinct(Unique_Incident_ID, [coi_ar, cc2, body region], .keep_all = TRUE)
-# and then your count() function or else you will not get the same counts in R.
-# Tableau does a better job of automating the grouping via AI, and in R you have
-# to do that manually.
 ###_____________________________________________________________________________
 
 # mechanism of injury mapping
