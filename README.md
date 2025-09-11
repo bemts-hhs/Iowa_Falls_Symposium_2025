@@ -1,19 +1,12 @@
 # Iowa Falls Symposium 2025 Presentation  
 
-[![Quarto](https://img.shields.io/badge/Quarto-%E2%89%A51.7.32-5A5E9A?logo=quarto&logoColor=white)](https://quarto.org/)  
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)  
-[![Reveal.js](https://img.shields.io/badge/Reveal.js-5.0-ff69b4?logo=javascript&logoColor=white)](https://revealjs.com/)  
-[![R](https://img.shields.io/badge/R-4.5.1-blue?logo=R&logoColor=white)](https://www.r-project.org/)  
-
----
-
-This repository contains the Quarto source code and supporting materials for my presentation at the **Iowa Falls Symposium 2025**. The presentation is delivered entirely as an interactive HTML slide deck using the [Quarto](https://quarto.org/) framework with [Reveal.js](https://revealjs.com/) as the underlying engine.  
+This repository contains the Quarto source code and supporting materials for a presentation at the **Iowa Falls Symposium 2025**. The presentation is delivered entirely as an interactive HTML slide deck using the [Quarto](https://quarto.org/) framework with [Reveal.js](https://revealjs.com/) as the underlying engine.  
 
 ## Project Overview  
 
 The purpose of this project is to demonstrate advanced data science methods and applications in trauma and emergency medical services research. This presentation integrates epidemiological principles, applied statistics, and reproducible analytics workflows into a single, cohesive communication format.  
 
-By using Quarto, I am able to:  
+By using Quarto, we:  
 
 - Ensure full reproducibility of analytic outputs.  
 - Integrate R-based statistical computing and visualization directly into presentation slides.  
@@ -22,7 +15,7 @@ By using Quarto, I am able to:
 
 ## Technical Details  
 
-- **Framework**: Quarto (≥1.7.0)  
+- **Framework**: Quarto
 - **Presentation Engine**: Reveal.js  
 - **Theme**: Custom extension of [letterbox-revealjs](https://github.com/EmilHvitfeldt/quarto-revealjs-letterbox) with institutional colors and fonts.  
 - **Primary Language**: R  
