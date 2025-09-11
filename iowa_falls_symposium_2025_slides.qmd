@@ -5,6 +5,7 @@ author: "Nicolas Foss, Ed.D., MS"
 date: "2025-09-26"
 format: 
   letterbox-revealjs:
+    output-file: index.html
     theme: custom.scss
     footer: "Iowa Falls Prevention Symposium 2025"
     logo: HHS_PH_horiz_color_print.jpg
