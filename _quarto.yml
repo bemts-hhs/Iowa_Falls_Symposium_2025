@@ -1,0 +1,5 @@
+project:
+  title: Iowa Falls Prevention Symposium 2025
+  type: website
+  output-dir: _site
+editor: visual
