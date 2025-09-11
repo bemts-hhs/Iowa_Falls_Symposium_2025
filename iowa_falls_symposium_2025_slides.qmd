@@ -1329,7 +1329,7 @@ gt::gtsave(data = sex_gt, filename = "sex_gt.png", path = figures)
 While males make up the majority of the trauma registry every year, females generate the majority of the falls The trends in these groups are increasing with the overall increasing trend of the aging Iowa population As we live longer, males and females are seeing an increase in injury events, especially falls
 :::
 
-## Patient Race
+## Patient Race - All
 
 <!-- Patient race group counts and gt table -->
 
@@ -1572,40 +1572,23 @@ gt::gtsave(
 
 ```
 
-<!-- Toggle Images -->
+![](figures/race_gt.png){fig-alt="Statistical tables showing counts of injury events by race group including the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024." fig-align="center"}
 
-::: {style="text-align:center;"}
+::: {.notes}
 
-```{=html}
+The white population in Iowa seems to drive injuries overall, but especially falls. From the data, we can see that white individuals ages 50+ seem to be driving the falls rate, in particular among women.
 
-<img src="figures/race_gt.png" alt="Statistical tables showing counts of injury events by race group with and without the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024.;" id="swap-img" style="max-width: 75%"/><br>
-
-```
-
-```{=html}
-<button style="font-family:&#39;Work Sans&#39;, sans-serif; font-weight:bold; color: #19405B;
-                 background-color: #B9E1DA; border: solid #03617A;" onclick="document.getElementById(&#39;swap-img&#39;).src=&#39;figures/race_gt.png&#39;">
-```
-
-All
-
-</button>
-
-```{=html}
-<button style="font-family:&#39;Work Sans&#39;, sans-serif; font-weight:bold; color: #19405B;
-                 background-color: #B9E1DA; border: solid #03617A;" onclick="document.getElementById(&#39;swap-img&#39;).src=&#39;figures/non_white_race_gt.png&#39;">
-```
-
-Less
-
-</button>
 
 :::
 
+## Patient Race - Select
+
+![](figures/non_white_race_gt.png){fig-alt="Statistical tables showing counts of injury events by race group excluding the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024."}
+
 ::: notes
-The white population in Iowa seems to drive injuries overall, but especially falls. From the data, we can see that white individuals ages 50+ seem to be driving the falls rate, in particular among women.
 
 However, when we remove Caucasians from the picture, we can see that black and hispanic individuals seem to also be driving the trend in falls among minorities.
+
 :::
 
 ## Insurance
