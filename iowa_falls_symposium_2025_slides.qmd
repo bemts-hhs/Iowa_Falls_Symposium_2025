@@ -1575,7 +1575,12 @@ gt::gtsave(
 <!-- Toggle Images -->
 
 ::: {style="text-align:center;"}
+
+```{=html}
+
 <img src="figures/race_gt.png" alt="Statistical tables showing counts of injury events by race group with and without the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024.;" id="swap-img" style="max-width: 75%"/><br>
+
+```
 
 ```{=html}
 <button style="font-family:&#39;Work Sans&#39;, sans-serif; font-weight:bold; color: #19405B;
@@ -1594,6 +1599,7 @@ All
 Less
 
 </button>
+
 :::
 
 ::: notes
