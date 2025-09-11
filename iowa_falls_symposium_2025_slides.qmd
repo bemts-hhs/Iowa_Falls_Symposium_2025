@@ -1581,7 +1581,7 @@ gt::gtsave(
 <!-- Toggle Images -->
 
 ::: {style="text-align:center;"}
-<img src="figures/race_gt.png" id="swap-img" style="max-width: 75%" alt="Statistical tables showing counts of injury events by race group with and without the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024.;"/><br>
+<img src="figures/race_gt.png" alt="Statistical tables showing counts of injury events by race group with and without the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024.;" id="swap-img" style="max-width: 75%"/><br>
 
 ```{=html}
 <button style="font-family:&#39;Work Sans&#39;, sans-serif; font-weight:bold; color: #19405B;
@@ -1780,8 +1780,8 @@ Now, we will learn more about the morbidity and mortality related to falls in Io
 
 ## Body regions affected
 
-Falls disproportionately result in TBI. 
-<!-- Body region affected by falls count and gt table -->
+Falls disproportionately result in TBI. <!-- Body region affected by falls count and gt table -->
+
 ```{r counts_body_region}
 
 #| label: counts_body_region
@@ -1909,7 +1909,9 @@ We see that falls tend to result in TBI in 1/5 injury events, whereas hip injuri
 We just saw how often severe injuries happen to fall patients how often do we activate the trauma team with falls compared to non falls?
 
 ## Trauma Team Activations
+
 <!-- Calculate proportion of TTAs among groups -->
+
 ```{r counts_tta}
 
 #| label: counts_tta
@@ -2138,7 +2140,9 @@ This is opposed to all other injuries where the trauma team is activated 77% of 
 :::
 
 ## Survival rate overall
+
 <!-- Calculate overall mortality rates -->
+
 ```{r mortality_rate_overall}
 
 #| label: mortality_rate_overall
@@ -2208,8 +2212,8 @@ gt::gtsave(
 
 ## Risk adjusted mortality
 
-Falls at times have poorer outcomes than other injuries.
-<!-- Calculate RMM overall and plot -->
+Falls at times have poorer outcomes than other injuries. <!-- Calculate RMM overall and plot -->
+
 ```{r rmm_overall}
 
 #| label: rmm_overall
@@ -2271,8 +2275,8 @@ Some of the poor outcomes could be out of hospitals controls, such as the long p
 
 ## Risk adjusted mortality, digging deeper
 
-A deeper dive.
-<!-- Calculated RMM for bins only -->
+A deeper dive. <!-- Calculated RMM for bins only -->
+
 ```{r rm_bin_summary}
 
 #| label: rm_bin_summary
@@ -2379,9 +2383,9 @@ overall_saved_lives <- saved_lives |>
 
 # A job well done
 
-- From 2020-2024, we expected `{r} prettyNum(predicted_deaths, big.mark = ",")` deaths.
-- We observed `{r} prettyNum(observed_deaths, big.mark = ",")` deaths
-- Overall, Iowa trauma centers saved `{r} prettyNum(overall_saved_lives, big.mark = ",")` fall patients that were predicted to die from 2020-2024.
+-   From 2020-2024, we expected `{r} prettyNum(predicted_deaths, big.mark = ",")` deaths.
+-   We observed `{r} prettyNum(observed_deaths, big.mark = ",")` deaths
+-   Overall, Iowa trauma centers saved `{r} prettyNum(overall_saved_lives, big.mark = ",")` fall patients that were predicted to die from 2020-2024.
 
 # Takeaways
 
@@ -2409,4 +2413,9 @@ At BEMTS, we have been hard at work creating open source software that benefits 
 # Questions?
 
 # Thanks!
-
+* Nicolas Foss, Ed.D., MS 
+* Epidemiologist 
+* Bureau of Emergency Medical and Trauma Services 
+* Bureau of Health Statistics 
+* Division of Public Health \> Iowa HHS 
+* C: 515.985.9627 \|\| E: nicolas.foss at hhs.iowa.gov
