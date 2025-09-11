@@ -1,70 +1,80 @@
-name: Render and Deploy Quarto (gh-pages)
+# 1. Check out repo
+- name: Check out repository
+  uses: actions/checkout@v4
 
-on:
-  push:
-    branches: [main]
+# 2. Install system dependencies
+- name: Install system dependencies
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y \
+      libcurl4-openssl-dev \
+      libssl-dev \
+      libxml2-dev \
+      libfontconfig1-dev \
+      libfreetype6-dev \
+      libpng-dev \
+      libtiff5-dev \
+      libjpeg-dev \
+      libudunits2-dev \
+      libgdal-dev \
+      libgeos-dev \
+      libproj-dev \
+      libv8-dev \
+      libpq-dev
 
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      # 1. Check out repo
-      - name: Check out repository
-        uses: actions/checkout@v4
+# 3. Set up R
+- name: Set up R
+  uses: r-lib/actions/setup-r@v2
 
-      # 2. Install system dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxml2-dev \
-            libfontconfig1-dev \
-            libfreetype6-dev \
-            libpng-dev \
-            libtiff5-dev \
-            libjpeg-dev \
-            libudunits2-dev \
-            libgdal-dev \
-            libgeos-dev \
-            libproj-dev \
-            libv8-dev \
-            libpq-dev
+# 4. Install Quarto
+- name: Set up Quarto
+  uses: quarto-dev/quarto-actions/setup@v2
 
-      # 3. Set up R
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
+# 4a. Set environment variables
+- name: Set environment variables
+  run: |
+    echo "figures_folder=figures" >> $GITHUB_ENV
+    echo "setup_file=R/setup_functions.R" >> $GITHUB_ENV
+    echo "IOWA_COUNTY_POPS=data/iowa_county_pops.csv" >> $GITHUB_ENV
+    echo "IOWA_COUNTY_AGE_POPS=data/iowa_county_age_pops.csv" >> $GITHUB_ENV
+    echo "US_STANDARD_POPS=data/us_standard_pops.csv" >> $GITHUB_ENV
+    echo "IOWA_STATE_POPS=data/iowa_state_age_pops.csv" >> $GITHUB_ENV
+    echo "trauma_data_2020=data/trauma_2020.csv" >> $GITHUB_ENV
+    echo "trauma_data_2021=data/trauma_2021.csv" >> $GITHUB_ENV
+    echo "trauma_data_2022=data/trauma_2022.csv" >> $GITHUB_ENV
+    echo "trauma_data_2023=data/trauma_2023.csv" >> $GITHUB_ENV
+    echo "trauma_data_2024=data/trauma_2024.csv" >> $GITHUB_ENV
+    echo "mech_injury_map=data/mech_injury_map.csv" >> $GITHUB_ENV
+    echo "injury_matrix=data/injury_matrix.csv" >> $GITHUB_ENV
+    echo "iowa_counties_districts=data/iowa_counties_districts.csv" >> $GITHUB_ENV
+    echo "hospital_data_folder=data/hospital_data" >> $GITHUB_ENV
 
-      # 4. Install Quarto
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+# 5. Cache R packages
+- name: Cache R packages
+  uses: actions/cache@v3
+  with:
+    path: ${{ env.R_LIBS_USER }}
+    key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
+    restore-keys: |
+      ${{ runner.os }}-r-
 
-      # 5. Cache R packages
-      - name: Cache R packages
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }} # optional
-          restore-keys: |
-            ${{ runner.os }}-r-
+# 6. Install R packages using pak
+- name: Install R packages with pak
+  run: |
+    Rscript -e "install.packages('pak', repos='https://cloud.r-project.org')"
+    Rscript -e "pak::pkg_install(c('quarto', 'dplyr', 'tidyr', 'htmltools', 'htmlwidgets', 
+    'viridis', 'tigris', 'ggthemes', 'ggplot2', 'forcats', 'stringr', 'tidyselect', 'readr', 
+    'purrr', 'rmarkdown', 'traumar', 'readxl', 'janitor', 'gt', 'gtExtras', 'webshot2',
+    'svglite', 'sf', 'leaflet'))"
 
-      # 6. Install R packages using pak
-      - name: Install R packages with pak
-        run: |
-          Rscript -e "install.packages('pak', repos='https://cloud.r-project.org')"
-          Rscript -e "pak::pkg_install(c('quarto', 'tidyverse', 'rmarkdown',
-            'traumar', 'readxl', 'janitor', 'gt', 'gtExtras', 'webshot2',
-            'svglite', 'sf', 'leaflet'))"
+# 7. Render Quarto project
+- name: Render Quarto Project
+  run: |
+    quarto render
 
-      # 7. Render Quarto project
-      - name: Render Quarto Project
-        run: |
-          quarto render
-
-      # 8. Deploy to gh-pages
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
+# 8. Deploy to gh-pages
+- name: Deploy to GitHub Pages
+  uses: peaceiris/actions-gh-pages@v4
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    publish_dir: ./_site
