@@ -27,9 +27,7 @@
 #   'gtExtras',
 #   'webshot2',
 #   'svglite',
-#   'DT',
 #   'leaflet',
-#   'sparkline',
 #   'quarto'
 # ))
 
