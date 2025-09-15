@@ -2397,9 +2397,14 @@ At BEMTS, we have been hard at work creating open source software that benefits 
 # Questions?
 
 # Thanks!
-* Nicolas Foss, Ed.D., MS 
-* Epidemiologist 
-* Bureau of Emergency Medical and Trauma Services 
-* Bureau of Health Statistics 
-* Division of Public Health \> Iowa HHS 
-* C: 515.985.9627 \|\| E: nicolas.foss at hhs.iowa.gov
+Nicolas Foss, Ed.D., MS 
+
+Epidemiologist 
+
+Bureau of Emergency Medical and Trauma Services 
+
+Bureau of Health Statistics 
+
+Division of Public Health \> Iowa HHS 
+
+C: 515.985.9627 \|\| E: nicolas.foss at hhs.iowa.gov
