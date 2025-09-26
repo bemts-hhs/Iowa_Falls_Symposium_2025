@@ -1575,11 +1575,8 @@ gt::gtsave(
 
 ![](figures/race_gt.png){fig-alt="Statistical tables showing counts of injury events by race group including the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024." fig-align="center"}
 
-::: {.notes}
-
+::: notes
 The white population in Iowa seems to drive injuries overall, but especially falls. From the data, we can see that white individuals ages 50+ seem to be driving the falls rate, in particular among women.
-
-
 :::
 
 ## Patient Race - Select
@@ -1587,9 +1584,7 @@ The white population in Iowa seems to drive injuries overall, but especially fal
 ![](figures/non_white_race_gt.png){fig-alt="Statistical tables showing counts of injury events by race group excluding the white race for each year 2020 through 2024. There is a 100% bar group showing the percent of total injury events by race group, and a sparkline graph in the last column showing the trend of count of injury events from 2020 through 2024."}
 
 ::: notes
-
 However, when we remove Caucasians from the picture, we can see that black and hispanic individuals seem to also be driving the trend in falls among minorities.
-
 :::
 
 ## Insurance
@@ -1945,7 +1940,11 @@ tta_counts <- tta_counts |>
     Trauma_Team_Activated = ifelse(
       Trauma_Team_Activated == "Trauma Team Activated",
       "TTA",
-      "No TTA"
+      ifelse(
+        Trauma_Team_Activated == "Trauma Team Not Activated",
+        "No TTA",
+        NA_character_
+      )
     )
   )
 
@@ -1957,7 +1956,7 @@ tta_gt <- tta_counts |>
     Trauma_Team_Activated ~ "",
     Percent ~ "% TTA"
   ) |>
-  gt::sub_missing(columns = `2020`:Total) |>
+  gt::sub_missing(columns = Trauma_Team_Activated:Total) |>
   gt::tab_row_group(label = "Other Injury", rows = 1:2) |>
   gt::tab_row_group(label = "Falls", rows = 3:4) |>
   gt::tab_row_group(label = "Total", rows = 5) |>
@@ -2304,6 +2303,7 @@ rmm_summary_gt <- rmm_summary_final |>
   gt::fmt_percent(
     columns = c("Bin Start", "Bin End", "Obs. Deaths":"Pred. Death")
   ) |>
+  gt::fmt_number(columns = Alive:N, drop_trailing_zeros = TRUE) |>
   gtExtras::gt_plt_bar(column = RMM, scale_type = "number", accuracy = 0.001) |>
   tab_style_hhs(border_cols = 2:tidyselect::last_col())
 
@@ -2397,14 +2397,15 @@ At BEMTS, we have been hard at work creating open source software that benefits 
 # Questions?
 
 # Thanks!
-Nicolas Foss, Ed.D., MS 
 
-Epidemiologist 
+Nicolas Foss, Ed.D., MS
 
-Bureau of Emergency Medical and Trauma Services 
+Epidemiologist
 
-Bureau of Health Statistics 
+Bureau of Emergency Medical and Trauma Services
 
-Division of Public Health \> Iowa HHS 
+Bureau of Health Statistics
+
+Division of Public Health \> Iowa HHS
 
 C: 515.985.9627 \|\| E: nicolas.foss at hhs.iowa.gov
